@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+matplotlib = "==3.9.4"
+opencv-python-headless = "==4.10.0.84"
+ultralytics = "==8.3.53"
+label-studio = "==1.15.0"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"
+python_full_version = "3.12.8"
