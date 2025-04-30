@@ -1,0 +1,6 @@
+tensorflow==2.8.0
+tflite-model-maker==0.4.3
+pycocotools==2.0.8
+opencv-python==4.11.0.86
+pillow==11.2.1
+label-studio==1.15.0
