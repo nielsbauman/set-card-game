@@ -1,0 +1,9 @@
+oval-empty
+oval-filled
+oval-partial
+rhombus-empty
+rhombus-filled
+rhombus-partial
+wave-empty
+wave-filled
+wave-partial
