@@ -1,11 +1,13 @@
 import 'dart:developer';
 import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:set_card_game_app/set_matcher.dart';
+
+import 'set_matcher.dart';
 import 'object_detection.dart';
-import 'dart:io';
+import 'camera_state.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,7 +25,8 @@ class MyApp extends StatelessWidget {
           seedColor: Colors.orange,
         ),
       ),
-      home: const MyHome(),
+      // home: const MyHome(),
+      home: CameraScreen(),
     );
   }
 }
