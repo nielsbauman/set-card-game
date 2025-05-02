@@ -1,5 +1,5 @@
-import 'dart:developer';
-import 'dart:io';
+import 'dart:developer' show log;
+import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:set_card_game_app/color_analysis.dart';
@@ -56,15 +56,14 @@ class ObjectDetection {
     _shapeDetectionLabels = labelsRaw.split('\n');
   }
 
-  Uint8List analyseImage(String imagePath) {
+  (Uint8List, List<(Card, DetectedObject)>) analyseImage(Uint8List imageData) {
     log('Analysing image...');
-    // Reading image bytes from file
-    final imageData = File(imagePath).readAsBytesSync();
     final image = img.decodeImage(imageData)!;
 
     final detectedCardObjects = _detectCards(imageData);
     final extractedCardImages = _extractObjects(image, detectedCardObjects);
 
+    final detectedCards = <(Card, DetectedObject)>[];
     for (var i = 0; i < detectedCardObjects.length; i++) {
       final detectedCardObject = detectedCardObjects[i];
       final cardImage = extractedCardImages[i];
@@ -78,14 +77,15 @@ class ObjectDetection {
         final [shape, filling] = detectedShapes[0].classLabel.split('-');
         final card = Card(colors[0].color, Shape.fromLong(shape), Filling.fromLong(filling), detectedShapes.length);
         log('Detected card is $card');
-        img.drawString(
-          image,
-          card.toString(),
-          font: img.arial48,
-          x: (detectedCardObject.boundingBox.left * image.width).toInt() + 7,
-          y: (detectedCardObject.boundingBox.top * image.height).toInt() + 7,
-          color: img.ColorRgb8(255, 0, 0),
-        );
+        detectedCards.add((card, detectedCardObject));
+        // img.drawString(
+        //   image,
+        //   card.toString(),
+        //   font: img.arial48,
+        //   x: (detectedCardObject.boundingBox.left * image.width).toInt() + 7,
+        //   y: (detectedCardObject.boundingBox.top * image.height).toInt() + 7,
+        //   color: img.ColorRgb8(255, 0, 0),
+        // );
       } else {
         log('Colors was $colors, shapes was $detectedShapes');
       }
@@ -94,7 +94,7 @@ class ObjectDetection {
     }
 
     // _drawResults([img.ColorRgb8(255, 0, 0)], image, detectedCards);
-    return img.encodeJpg(image);
+    return (img.encodeJpg(image), detectedCards);
   }
 
   List<DetectedObject> _detectCards(Uint8List imageData) {

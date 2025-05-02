@@ -6,10 +6,22 @@ class Card {
 
   Card(this.color, this.shape, this.filling, this.count);
 
+  static Card fromShort(String card) {
+    return Card(Color.fromShort(card[0]), Shape.fromShort(card[1]), Filling.fromShort(card[2]), int.parse(card[3]));
+  }
+
   @override
   String toString() {
     return '${color.toShort()}${shape.toShort()}${filling.toShort()}$count';
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is Card && other.color == color && other.shape == shape && other.filling == filling && other.count == count;
+  }
+
+  @override
+  int get hashCode => Object.hash(color, shape, filling, count);
 }
 
 enum Color {

@@ -1,9 +1,11 @@
+import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:set_card_game_app/set_matcher.dart';
 import 'object_detection.dart';
-import 'dart:io' show Platform;
+import 'dart:io';
 
 void main() {
   runApp(const MyApp());
@@ -46,6 +48,15 @@ class _MyHomeState extends State<MyHome> {
     objectDetection = ObjectDetection();
   }
 
+  void _runAnalysis(String imagePath) {
+    // Reading image bytes from file
+    final imageData = File(imagePath).readAsBytesSync();
+    final (drawnImage, detectedCards) = objectDetection!.analyseImage(imageData);
+    image = drawnImage;
+    final computedSets = SetMatcher.computeBruteForce(detectedCards);
+    log('Found sets: $computedSets');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,7 +79,7 @@ class _MyHomeState extends State<MyHome> {
                           source: ImageSource.camera,
                         );
                         if (result != null) {
-                          image = objectDetection!.analyseImage(result.path);
+                          _runAnalysis(result.path);
                           setState(() {});
                         }
                       },
@@ -83,7 +94,7 @@ class _MyHomeState extends State<MyHome> {
                         source: ImageSource.gallery,
                       );
                       if (result != null) {
-                        image = objectDetection!.analyseImage(result.path);
+                        _runAnalysis(result.path);
                         setState(() {});
                       }
                     },
