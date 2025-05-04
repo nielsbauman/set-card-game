@@ -60,17 +60,17 @@ class ObjectDetection {
     log('Analysing image...');
     final image = img.decodeImage(imageData)!;
 
-    final detectedCardObjects = _detectCards(imageData);
+    final detectedCardObjects = _detectCards(image);
     final extractedCardImages = _extractObjects(image, detectedCardObjects);
 
     final detectedCards = <(Card, DetectedObject)>[];
     for (var i = 0; i < detectedCardObjects.length; i++) {
       final detectedCardObject = detectedCardObjects[i];
       final cardImage = extractedCardImages[i];
-      final colors = ColorAnalysis.extractColors(img.encodeJpg(cardImage));
 
-      final cv2Img = cv2.imdecode(img.encodeJpg(cardImage), cv2.IMREAD_COLOR);
-      final grayImage = cv2.imencode(".jpeg", cv2.cvtColor(cv2Img, cv2.COLOR_BGR2GRAY)).$2;
+      final cv2Image = cv2.imdecode(img.encodeJpg(cardImage), cv2.IMREAD_COLOR);
+      final colors = ColorAnalysis.extractColors(cv2Image);
+      final grayImage = cv2.imencode(".jpeg", cv2.cvtColor(cv2Image, cv2.COLOR_BGR2GRAY)).$2;
 
       final detectedShapes = _detectShapes(grayImage);
       if (colors.isNotEmpty && detectedShapes.isNotEmpty) {
@@ -97,8 +97,7 @@ class ObjectDetection {
     return (img.encodeJpg(image), detectedCards);
   }
 
-  List<DetectedObject> _detectCards(Uint8List imageData) {
-    final image = img.decodeImage(imageData)!;
+  List<DetectedObject> _detectCards(img.Image image) {
     final detectedObjects = _runInference(_cardDetectionInterpreter, ['card'], image, _cardDetectionThreshold);
     final filteredObjects = _filterObjectsByOverlap(detectedObjects, _cardOverlapThreshold);
     log('Found ${filteredObjects.length} cards (${detectedObjects.length} before filtering)');

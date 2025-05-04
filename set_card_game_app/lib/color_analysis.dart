@@ -1,12 +1,10 @@
 import 'package:opencv_core/opencv.dart' as cv2;
-import 'package:flutter/services.dart';
 import 'card.dart';
 
 class ColorAnalysis {
   static const COLOR_PIXEL_THRESHOLD = 0.01;
 
-  static List<DetectedColor> extractColors(Uint8List image) {
-    final cv2Image = cv2.imdecode(image, cv2.IMREAD_COLOR);
+  static List<DetectedColor> extractColors(cv2.Mat cv2Image) {
     final height = cv2Image.height;
     final width = cv2Image.width;
 
