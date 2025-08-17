@@ -4,3 +4,4 @@ pycocotools==2.0.8
 opencv-python==4.11.0.86
 pillow==11.2.1
 label-studio==1.15.0
+protobuf==3.20.3
