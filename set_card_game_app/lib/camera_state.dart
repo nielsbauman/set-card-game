@@ -13,6 +13,7 @@ import 'card.dart';
 // --- Constants for UI layout and styling ---
 const double _buttonRowBottomPadding = 30.0;
 const double _cameraButtonSpacing = 20.0;
+const double _setsButtonLeftPadding = 10.0;
 
 class CameraScreen extends StatefulWidget {
   @override
@@ -31,7 +32,6 @@ class _CameraScreenState extends State<CameraScreen> {
   // --- Set Detection and UI State ---
   List<(Card, DetectedObject)> _detectedCards = [];
   List<List<(Card, DetectedObject)>> _detectedSets = [];
-  bool _showSetPrompt = false;
   bool _showCurrentSet = false;
   int _currentSetIndex = 0;
   int _currentCardIndex = 0;
@@ -87,7 +87,6 @@ class _CameraScreenState extends State<CameraScreen> {
     setState(() {
       _detectedCards = detectedCards;
       _detectedSets = computedSets.map((e) => e.toList()).toList();
-      _showSetPrompt = computedSets.isNotEmpty;
       _imageFile = image;
       _showCapturedPhoto = true;
     });
@@ -154,6 +153,7 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  /// Handles cycling through cards and sets when viewing them.
   void _handleTap() {
     setState(() {
       if (_currentCardIndex < 2) {
@@ -167,6 +167,97 @@ class _CameraScreenState extends State<CameraScreen> {
         }
       }
     });
+  }
+
+  /// Handles long press gestures to allow for card correction.
+  void _handleLongPress(LongPressStartDetails details) {
+    if (_showCurrentSet) {
+      setState(() {
+        _showCurrentSet = false;
+      });
+    }
+    final Offset tapPosition = details.localPosition;
+
+    // Find which card (if any) was tapped by checking bounding boxes
+    final (Card, DetectedObject)? tappedCardTuple = _detectedCards
+        .cast()
+        .firstWhere((cardTuple) => _calculateScaledRect(cardTuple.$2.boundingBox).contains(tapPosition), orElse: () => null);
+
+    if (mounted == false) {
+      return;
+    }
+    // A card was long-pressed, show the correction dialog
+    final TextEditingController textController = TextEditingController(text: tappedCardTuple == null ? '' : tappedCardTuple.$1.toString());
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(tappedCardTuple == null ? "Add Card" : "Correct Card Label"),
+          content: TextField(
+            controller: textController,
+            decoration: InputDecoration(hintText: "e.g., rof1"),
+            autofocus: true,
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              child: const Text("Confirm"),
+              onPressed: () {
+                final String inputText = textController.text.trim();
+                if (inputText.isEmpty) {
+                  Navigator.of(context).pop();
+                  return;
+                }
+
+                final Card newCard;
+                try {
+                  newCard = Card.fromShort(inputText.toLowerCase());
+                  log("Original card: ${tappedCardTuple?.$1}, New card: $newCard");
+                } catch (e) {
+                  log("Invalid card format: $e");
+                  // Show an error message if the format is incorrect.
+                  // The dialog remains open for the user to try again.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Invalid format. Use format like 'rof1'."),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (tappedCardTuple == null) {
+                  // TODO: Implement adding new card
+                  log("Didn't implement adding yet");
+                } else {
+                  // Find the index of the card to be replaced.
+                  final int cardIndex = _detectedCards.indexOf(tappedCardTuple);
+                  // Update the state to reflect the changes.
+                  setState(() {
+                    // 1. Create a new list with the corrected card.
+                    final updatedDetectedCards = List<(Card, DetectedObject)>.from(_detectedCards);
+                    updatedDetectedCards[cardIndex] = (newCard, tappedCardTuple!.$2);
+                    _detectedCards = updatedDetectedCards;
+
+                    // 2. Re-run the set matching logic on the updated list.
+                    final newComputedSets = SetMatcher.computeBruteForce(_detectedCards);
+                    _detectedSets = newComputedSets.map((e) => e.toList()).toList();
+
+                    // 3. Ensure we are not in viewing mode after a correction.
+                    _showCurrentSet = false;
+                  });
+                }
+
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _updateImageLayout() {
@@ -190,11 +281,19 @@ class _CameraScreenState extends State<CameraScreen> {
     setState(() {
       _showCapturedPhoto = false;
       _imageFile = null;
-      _showSetPrompt = false;
       _showCurrentSet = false;
       _detectedCards = [];
       _detectedSets = [];
     });
+  }
+
+  Rect _calculateScaledRect(Rect rect) {
+    return Rect.fromLTWH(
+      _imageOffsetX + rect.left * _imageDisplayWidth,
+      _imageOffsetY + rect.top * _imageDisplayHeight,
+      rect.width * _imageDisplayWidth,
+      rect.height * _imageDisplayHeight,
+    );
   }
 
   // --- Widget Building Methods ---
@@ -211,6 +310,7 @@ class _CameraScreenState extends State<CameraScreen> {
               children: [
                 _buildCameraView(),
                 _buildActionButtons(),
+                if (_showCapturedPhoto) _buildSetsFoundButton(),
               ],
             );
           } else {
@@ -234,6 +334,7 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget _buildPhotoViewer() {
     return GestureDetector(
       onTap: _showCurrentSet ? _handleTap : null,
+      onLongPressStart: _handleLongPress,
       child: Stack(
         children: [
           Center(
@@ -244,14 +345,14 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
           // This builder triggers the layout update after the image is rendered.
-          Builder(
+          if (_imageDisplayWidth == 0) Builder(
             builder: (context) {
               _updateImageLayout();
               return const SizedBox.shrink();
             },
           ),
           // Iterate over all detected cards to draw their text and potential highlight.
-          ..._detectedCards.map((cardTuple) {
+          if (_imageDisplayWidth != 0) ..._detectedCards.map((cardTuple) {
             bool isHighlighted = false;
             // Check if the card should be highlighted.
             if (_showCurrentSet && _detectedSets.isNotEmpty) {
@@ -263,39 +364,12 @@ class _CameraScreenState extends State<CameraScreen> {
             return CustomPaint(
               painter: HighlightPainter(
                 cardTuple: cardTuple,
-                imageWidth: _imageDisplayWidth,
-                imageHeight: _imageDisplayHeight,
-                offsetX: _imageOffsetX,
-                offsetY: _imageOffsetY,
+                calculateScaledRect: _calculateScaledRect,
                 isHighlighted: isHighlighted,
               ),
               child: Container(),
             );
           }).toList(),
-          if (_showSetPrompt && !_showCurrentSet)
-            Center(
-              child: AlertDialog(
-                title: Text("Found ${_detectedSets.length} sets!"),
-                content: const Text("Would you like to view them one by one?"),
-                actions: [
-                  TextButton(
-                    onPressed: () => setState(() => _showSetPrompt = false),
-                    child: const Text("No"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showSetPrompt = false;
-                        _showCurrentSet = true;
-                        _currentSetIndex = 0;
-                        _currentCardIndex = 0;
-                      });
-                    },
-                    child: const Text("Yes"),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -342,39 +416,50 @@ class _CameraScreenState extends State<CameraScreen> {
       ),
     );
   }
+
+  /// Builds the button that shows the number of sets and starts the viewing process.
+  Widget _buildSetsFoundButton() {
+    return Positioned(
+      bottom: _buttonRowBottomPadding,
+      left: _setsButtonLeftPadding,
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.style),
+        label: Text("${_detectedSets.length} Sets"),
+        onPressed: () {
+          setState(() {
+            if (_showCurrentSet) {
+              _showCurrentSet = false;
+              return;
+            }
+            _currentSetIndex = 0;
+            _currentCardIndex = 0;
+            _showCurrentSet = true;
+          });
+        },
+      ),
+    );
+  }
 }
 
 class HighlightPainter extends CustomPainter {
+  final Rect Function(Rect) calculateScaledRect;
   final (Card, DetectedObject) cardTuple;
-  final double imageWidth;
-  final double imageHeight;
-  final double offsetX;
-  final double offsetY;
   final bool isHighlighted;
-  final Rect rect;
 
   // --- Constants for styling the highlight ---
   static const double _highlightTextFontSize = 16.0;
   static const double _highlightTextTopPadding = 5.0;
 
   HighlightPainter({
+    required this.calculateScaledRect,
     required this.cardTuple,
-    required this.imageWidth,
-    required this.imageHeight,
-    required this.offsetX,
-    required this.offsetY,
     required this.isHighlighted,
-  }) : rect = cardTuple.$2.boundingBox;
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     // Calculate the actual on-screen coordinates for the highlight box
-    final scaledRect = Rect.fromLTWH(
-      offsetX + rect.left * imageWidth,
-      offsetY + rect.top * imageHeight,
-      rect.width * imageWidth,
-      rect.height * imageHeight,
-    );
+    final scaledRect = calculateScaledRect(cardTuple.$2.boundingBox);
 
     // Only draw the highlight rectangle if the card is part of the current set
     if (isHighlighted) {
@@ -418,12 +503,6 @@ class HighlightPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant HighlightPainter oldDelegate) {
-    return rect != oldDelegate.rect ||
-        imageWidth != oldDelegate.imageWidth ||
-        imageHeight != oldDelegate.imageHeight ||
-        offsetX != oldDelegate.offsetX ||
-        offsetY != oldDelegate.offsetY ||
-        cardTuple != oldDelegate.cardTuple ||
-        isHighlighted != oldDelegate.isHighlighted;
+    return cardTuple != oldDelegate.cardTuple || isHighlighted != oldDelegate.isHighlighted;
   }
 }
