@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'dart:developer';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'set_matcher.dart';
 import 'object_detection.dart';
@@ -95,23 +94,8 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _saveImage() async {
     if (_imageFile == null) return;
 
-    // 1. Request storage permission.
-    // Note: For iOS, you must add NSPhotoLibraryAddUsageDescription to your Info.plist.
-    // For Android 10+, no permission is needed for saving to gallery.
-    final status = await Permission.storage.request();
-
-    if (!status.isGranted) {
-      log('Storage permission is required to save images.');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Storage permission is required to save images.')),
-        );
-      }
-      return;
-    }
-
     try {
-      // 2. Find the downloads directory.
+      // 1. Find the downloads directory.
       // Note: getExternalStorageDirectory() is typically the root of the public
       // storage, which often contains the "Download" folder.
       Directory? downloadsDirectory = await getExternalStorageDirectory();
@@ -124,20 +108,20 @@ class _CameraScreenState extends State<CameraScreen> {
       final String downloadPath = '/storage/emulated/0/Download';
       downloadsDirectory = Directory(downloadPath);
 
-      // 3. Create the custom folder if it doesn't exist.
+      // 2. Create the custom folder if it doesn't exist.
       final String customFolderPath = '${downloadsDirectory.path}/set-card-game/saved-images';
       final Directory customDir = Directory(customFolderPath);
       if (!await customDir.exists()) {
         await customDir.create(recursive: true);
       }
 
-      // 4. Copy the image file to the new location.
+      // 3. Copy the image file to the new location.
       final String fileName = _imageFile!.path.split('/').last;
       final String newPath = '${customDir.path}/$fileName';
       final File originalFile = File(_imageFile!.path);
       await originalFile.copy(newPath);
 
-      // 5. Show feedback to the user.
+      // 4. Show feedback to the user.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Image saved to: $newPath')),
