@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 
-from card import Card
+from card_model import Card
 from predict_utils import target_to_image_names
 
 

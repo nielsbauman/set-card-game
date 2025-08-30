@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 
-from card import Card
+from card_model import Card
 from predict_utils import preprocess_image, detect_objects, filter_objects_by_overlap, draw_results, \
     target_to_image_names, preprocess_image_from_opencv
 
@@ -51,9 +51,9 @@ def predict(target: str, save: bool, show: bool):
         image_path = os.path.join(images_dir, image_name)
         card = Card.from_filename(image_name)
         original_image, results = run_odt(image_path)
-        if len(results) != card.count or CLASSES[
-            int(results[0]['class_id'])] != f'{card.shape.to_long()}-{card.filling.to_long()}':
-            print(f'Found mismatch in {image_path}, expected {card}, {results}')
+        found_class = CLASSES[int(results[0]['class_id'])]
+        if len(results) != card.count or found_class != f'{card.shape.to_long()}-{card.filling.to_long()}':
+            print(f'Found mismatch in {image_path}, expected {card}, found class {found_class}, results ({len(results)} {results}')
         detection_result_image = draw_results(COLORS, original_image, results)
 
         if save:
@@ -62,18 +62,6 @@ def predict(target: str, save: bool, show: bool):
             Image.fromarray(detection_result_image).show()
 
 
-def validate(target: str):
-    images_dir, image_names = target_to_image_names(target)
-    for image_name in image_names:
-        image_path = os.path.join(images_dir, image_name)
-        card = Card.from_filename(image_name)
-        original_image, results = run_odt(image_path)
-        if len(results) != card.count or CLASSES[
-            int(results[0]['class_id'])] != f'{card.shape.to_long()}-{card.filling.to_long()}':
-            print(f'Found mismatch in {image_path}, expected {card}, {results}')
-
-
 if __name__ == '__main__':
     # predict('data/images', True)
-    predict('data-shapes/images/f4afd93a-set-card-game-real-11-rre3.jpg', False, True)
-    # validate('data-shapes/images')
+    predict('data-shapes/images/set-card-game-real-11-rre3.jpg', False, True)

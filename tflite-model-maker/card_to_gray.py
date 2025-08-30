@@ -3,7 +3,7 @@ import os
 import cv2
 from PIL import Image
 
-from card import Card
+from card_model import Card
 from predict_utils import target_to_image_names
 
 
