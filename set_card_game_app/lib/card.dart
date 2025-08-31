@@ -1,5 +1,5 @@
 class Card {
-  final Color color;
+  final CardColor color;
   final Shape shape;
   final Filling filling;
   final int count;
@@ -7,7 +7,7 @@ class Card {
   Card(this.color, this.shape, this.filling, this.count);
 
   static Card fromShort(String card) {
-    return Card(Color.fromShort(card[0]), Shape.fromShort(card[1]), Filling.fromShort(card[2]), int.parse(card[3]));
+    return Card(CardColor.fromShort(card[0]), Shape.fromShort(card[1]), Filling.fromShort(card[2]), int.parse(card[3]));
   }
 
   @override
@@ -24,16 +24,16 @@ class Card {
   int get hashCode => Object.hash(color, shape, filling, count);
 }
 
-enum Color {
+enum CardColor {
   GREEN("green"),
   PURPLE("purple"),
   RED("red");
 
   final String color;
 
-  const Color(this.color);
+  const CardColor(this.color);
 
-  static Color fromShort(String color) {
+  static CardColor fromShort(String color) {
     switch (color) {
       case "g":
         return GREEN;

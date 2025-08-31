@@ -20,9 +20,9 @@ class ColorAnalysis {
     final upperPurple = range([165, 255, 255]);
 
     final colorMasks = {
-      Color.RED: cv2.inRange(hsvImage, lowerRed, upperRed).add(cv2.inRange(hsvImage, lowerRed2, upperRed2)),
-      Color.GREEN: cv2.inRange(hsvImage, lowerGreen, upperGreen),
-      Color.PURPLE: cv2.inRange(hsvImage, lowerPurple, upperPurple)
+      CardColor.RED: cv2.inRange(hsvImage, lowerRed, upperRed).add(cv2.inRange(hsvImage, lowerRed2, upperRed2)),
+      CardColor.GREEN: cv2.inRange(hsvImage, lowerGreen, upperGreen),
+      CardColor.PURPLE: cv2.inRange(hsvImage, lowerPurple, upperPurple)
     };
 
     final detectedColors = <DetectedColor>[];
@@ -45,12 +45,12 @@ class ColorAnalysis {
 }
 
 class DetectedColor {
-  final Color _color;
+  final CardColor _color;
   final int _colorPixelCount;
 
   DetectedColor(this._color, this._colorPixelCount);
 
-  Color get color => _color;
+  CardColor get color => _color;
 
   @override
   String toString() {
