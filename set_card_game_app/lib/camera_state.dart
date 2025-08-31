@@ -353,7 +353,7 @@ class _CameraScreenState extends State<CameraScreen> {
               ),
               child: Container(),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
@@ -431,8 +431,9 @@ class HighlightPainter extends CustomPainter {
   final bool isHighlighted;
 
   // --- Constants for styling the highlight ---
-  static const double _highlightTextFontSize = 16.0;
   static const double _highlightTextTopPadding = 5.0;
+  static const double _shapeSize = 16.0;
+  static const double _shapeSpacing = 2.0;
 
   HighlightPainter({
     required this.calculateScaledRect,
@@ -442,10 +443,8 @@ class HighlightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Calculate the actual on-screen coordinates for the highlight box
     final scaledRect = calculateScaledRect(cardTuple.$2.boundingBox);
 
-    // Only draw the highlight rectangle if the card is part of the current set
     if (isHighlighted) {
       final paint = Paint()
         ..color = Colors.yellow.withOpacity(0.5)
@@ -453,36 +452,107 @@ class HighlightPainter extends CustomPainter {
       canvas.drawRect(scaledRect, paint);
     }
 
-    // Always draw the text description for the card
-    _paintText(canvas, scaledRect);
+    _paintShapes(canvas, scaledRect, cardTuple.$1);
   }
 
-  /// Helper method to paint the text onto the canvas.
-  void _paintText(Canvas canvas, Rect scaledRect) {
-    const textStyle = TextStyle(
-      color: Colors.black,
-      fontSize: _highlightTextFontSize,
-      fontWeight: FontWeight.bold,
-      backgroundColor: Colors.white54,
+  void _paintShapes(Canvas canvas, Rect scaledRect, Card card) {
+    final count = card.count;
+
+    final totalWidth = count * _shapeSize + (count - 1) * _shapeSpacing;
+    final startX = scaledRect.center.dx - totalWidth / 2;
+    final y = scaledRect.top + _highlightTextTopPadding;
+
+    for (int i = 0; i < count; i++) {
+      final x = startX + i * (_shapeSize + _shapeSpacing);
+      final rect = Rect.fromLTWH(x, y, _shapeSize, _shapeSize);
+      _drawShape(canvas, rect, card.shape, _getColor(card.color), card.filling);
+    }
+  }
+
+  void _drawShape(Canvas canvas, Rect rect, Shape shape, Color color, Filling filling) {
+    final Paint fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final Paint strokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2;
+
+    final Path shapePath = switch (shape) {
+      Shape.OVAL => Path()..addOval(rect),
+      Shape.RHOMBUS => _rhombusPath(rect),
+      Shape.WAVE => _wavePath(rect),
+    };
+
+    switch (filling) {
+      case Filling.FILLED:
+        canvas.drawPath(shapePath, fillPaint);
+      case Filling.EMPTY:
+        canvas.drawPath(shapePath, strokePaint);
+      case Filling.PARTIAL:
+        canvas.drawPath(shapePath, strokePaint);
+        // Draw two vertical lines at 1/3 and 2/3 of the width, clipped to the shape
+        final x1 = rect.left + rect.width / 3;
+        final x2 = rect.left + 2 * rect.width / 3;
+        canvas.save();
+        canvas.clipPath(shapePath);
+        canvas.drawLine(
+          Offset(x1, rect.top),
+          Offset(x1, rect.bottom),
+          strokePaint,
+        );
+        canvas.drawLine(
+          Offset(x2, rect.top),
+          Offset(x2, rect.bottom),
+          strokePaint,
+        );
+        canvas.restore();
+    }
+  }
+
+  Path _rhombusPath(Rect rect) {
+    final path = Path();
+    path.moveTo(rect.center.dx, rect.top);
+    path.lineTo(rect.right, rect.center.dy);
+    path.lineTo(rect.center.dx, rect.bottom);
+    path.lineTo(rect.left, rect.center.dy);
+    path.close();
+    return path;
+  }
+
+  Path _wavePath(Rect rect) {
+    final path = Path();
+    final left = rect.left;
+    final top = rect.top;
+    final width = rect.width;
+    final height = rect.height;
+
+    // Top wave curve
+    path.moveTo(left, top + height * 0.35);
+    path.cubicTo(
+      left + width * 0.25, top,
+      left + width * 0.75, top + height * 0.7,
+      left + width, top + height * 0.35,
     );
-
-    final cardShortString = cardTuple.$1.toString();
-    final textSpan = TextSpan(text: cardShortString, style: textStyle);
-
-    final textPainter = TextPainter(
-      text: textSpan,
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
+    // Bottom wave curve (mirrored)
+    path.cubicTo(
+      left + width * 0.75, top + height * 0.7 + height * 0.3,
+      left + width * 0.25, top + height,
+      left, top + height * 0.35 + height * 0.3,
     );
+    path.close();
+    return path;
+  }
 
-    textPainter.layout(minWidth: 0, maxWidth: scaledRect.width);
-
-    final textOffset = Offset(
-      scaledRect.center.dx - (textPainter.width / 2),
-      scaledRect.top + _highlightTextTopPadding,
-    );
-
-    textPainter.paint(canvas, textOffset);
+  Color _getColor(CardColor cardColor) {
+    switch (cardColor) {
+      case CardColor.GREEN:
+        return Colors.green;
+      case CardColor.PURPLE:
+        return Colors.purple;
+      case CardColor.RED:
+        return Colors.red;
+    }
   }
 
   @override
